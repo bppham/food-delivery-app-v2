@@ -1,3 +1,5 @@
+name: food_delivery_app_api
+
 services:
   # -------------------------------------------------------------
   # 1. Redis 7 - Cache, Geospatial, Distributed Locks & BullMQ
