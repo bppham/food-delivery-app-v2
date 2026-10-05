@@ -1,0 +1,96 @@
+services:
+  # -------------------------------------------------------------
+  # 1. Redis 7 - Cache, Geospatial, Distributed Locks & BullMQ
+  # -------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: fod_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --save 60 1
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - fod_network
+
+  # -------------------------------------------------------------
+  # 2. RedisInsight - Web GUI trực quan quản lý Redis
+  # Truy cập: http://localhost:5540
+  # -------------------------------------------------------------
+  redis-insight:
+    image: redis/redisinsight:latest
+    container_name: fod_redis_insight
+    restart: unless-stopped
+    ports:
+      - "5540:5540"
+    volumes:
+      - redis_insight_data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - fod_network
+
+  # -------------------------------------------------------------
+  # 3. Meilisearch - Search Engine (Tìm kiếm món ăn, quán ăn)
+  # Truy cập: http://localhost:7700
+  # -------------------------------------------------------------
+  meilisearch:
+    image: getmeili/meilisearch:v1.12
+    container_name: fod_meilisearch
+    restart: unless-stopped
+    ports:
+      - "7700:7700"
+    environment:
+      - MEILI_MASTER_KEY=masterKey_fod_meilisearch_123456
+      - MEILI_ENV=development
+      - MEILI_NO_ANALYTICS=true
+    volumes:
+      - meili_data:/meili_data
+    networks:
+      - fod_network
+
+  # -------------------------------------------------------------
+  # 4. RabbitMQ - Message Broker chuyên dụng (Event-Driven)
+  # AMQP Protocol: port 5672
+  # Web Management Dashboard: http://localhost:15672 (User: admin / Pass: admin123)
+  # -------------------------------------------------------------
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: fod_rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=admin123
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - fod_network
+
+volumes:
+  redis_data:
+    driver: local
+  redis_insight_data:
+    driver: local
+  meili_data:
+    driver: local
+  rabbitmq_data:
+    driver: local
+
+networks:
+  fod_network:
+    driver: bridge
