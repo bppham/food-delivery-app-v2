@@ -6,6 +6,8 @@ const createError = require("../utils/createError");
 const { getPaginatedData } = require("../utils/paging");
 const mongoose = require("mongoose");
 const ErrorCode = require("../constants/errorCodes.enum");
+const { REDIS_KEYS, REDIS_TTL } = require("../constants/redisKeys.constant");
+const cacheService = require("../utils/redis/cache.service");
 
 
 const getDishByIdService = async (dishId) => {
@@ -32,6 +34,14 @@ const getDishesByStoreIdService = async (storeId, query) => {
     limit = 10,
   } = query;
 
+  const isSearching = !!name;
+  const cacheKey = REDIS_KEYS.STORE_DISHES(storeId, category || 'all', page, limit, sortBy, order);
+  if (!isSearching) {
+    const cachedData = await cacheService.get(cacheKey);
+    if (cachedData) {
+      return cachedData;
+    }
+  }
   // --- Filter ---
   const filter = {
     storeId: new mongoose.Types.ObjectId(storeId),
@@ -96,7 +106,7 @@ const getDishesByStoreIdService = async (storeId, query) => {
   const totalItems = await Dish.countDocuments(filter);
   const totalPages = Math.ceil(totalItems / parseInt(limit));
 
-  return {
+  const result = {
     success: true,
     message: "Dishes retrieved successfully",
     data: dishesWithToppings,
@@ -108,6 +118,10 @@ const getDishesByStoreIdService = async (storeId, query) => {
       status: 200,
     },
   };
+  if (!isSearching) {
+    await cacheService.set(cacheKey, result, REDIS_TTL.MEDIUM);
+  }
+  return result;
 };
 
 const createDishService = async (
@@ -175,12 +189,6 @@ const createDishService = async (
     .lean();
 
   fullDish.toppingGroups = dishToppingGroups.map((g) => g.topping_groups);
-  try {
-    clearStoreCaches(storeId)
-  }
-  catch(e){
-    print(e)
-  }
   return fullDish;
 };
 
@@ -192,12 +200,6 @@ const changeDishStatusService = async (storeId, dishId) => {
     dish.stockStatus === "available" ? "out_of_stock" : "available";
 
   await dish.save();
-  try {
-    clearStoreCaches(storeId)
-  }
-  catch(e){
-    print(e)
-  }
   return dish;
 };
 
@@ -266,7 +268,8 @@ const deleteDishService = async (storeId, dishId) => {
 
   // 3. Nếu đang được dùng → soft delete (set deleted = true)
   if (usedInOrders || usedInCarts) {
-    await Dish.updateOne({ _id: dishId }, { $set: { deleted: true } });
+    dish.deleted = true;
+    await dish.save();
 
     // Optional: vẫn xóa liên kết topping group
     await DishToppingGroup.deleteMany({ dishId });
@@ -279,15 +282,8 @@ const deleteDishService = async (storeId, dishId) => {
   }
 
   // 4. Nếu không được dùng → xóa hẳn
-  await Dish.deleteOne({ _id: dishId });
+  await Dish.findOneAndDelete({ _id: dishId });
   await DishToppingGroup.deleteMany({ dishId });
-
-  try {
-  clearStoreCaches(storeId)
-  }
-  catch(e){
-    print(e)
-  }
 
   return {
     message: "Dish deleted permanently",

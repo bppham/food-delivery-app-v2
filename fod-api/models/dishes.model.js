@@ -1,4 +1,6 @@
 const mongoose = require("mongoose");
+const cacheService = require("../utils/redis/cache.service");
+const { REDIS_KEYS } = require("../constants/redisKeys.constant");
 const { Schema } = mongoose;
 
 const DishSchema = new Schema(
@@ -48,6 +50,26 @@ DishSchema.virtual("categories", {
   localField: "category",
   foreignField: "_id",
   justOne: true,
+});
+
+
+const clearMenuCache = async (storeId) => {
+  if (storeId) {
+    console.log(`[DISH HOOK] Auto clearing menu cache for store: ${storeId}`);
+    await cacheService.delByPattern(REDIS_KEYS.STORE_DISHES_PATTERN(storeId));
+  }
+}
+
+DishSchema.post("save", async function (doc) {
+  await clearMenuCache(doc?.storeId);
+});
+
+DishSchema.post("findOneAndUpdate", async function (doc) {
+  await clearMenuCache(doc?.storeId);
+});
+
+DishSchema.post("findOneAndDelete", async function (doc) {
+  await clearMenuCache(doc?.storeId);
 });
 
 module.exports = mongoose.model("dishes", DishSchema);
