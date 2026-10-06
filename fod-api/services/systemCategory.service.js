@@ -1,22 +1,34 @@
 const SystemCategory = require("../models/system_categories.model");
 const Store = require("../models/stores.model");
 const ErrorCode = require("../constants/errorCodes.enum");
+const cacheService = require("../utils/redis/cache.service");
+const { REDIS_KEYS, REDIS_TTL } = require("../constants/redisKeys.constant");
 
 const getAllSystemCategoryService = async () => {
+  const cacheData = await cacheService.get(REDIS_KEYS.SYSTEM_CATEGORIES);
+  if (cacheData) {
+    return cacheData;
+  }
   const data = await SystemCategory.find().populate("image");
+
+  await cacheService.set(REDIS_KEYS.SYSTEM_CATEGORIES, data, REDIS_TTL.LONG);
   return data;
 };
 
-const getAllSystemCategoriesWithStoreCountService = async () => {
-  const categories = await SystemCategory.find().populate("image");
 
-  // Duyệt từng category, đếm số store gán category đó
+const getAllSystemCategoriesWithStoreCountService = async () => {
+  // 1. Kiểm tra cache ngắn hạn (3 phút)
+  const cacheKey = "fod:categories:with_count";
+  const cachedData = await cacheService.get(cacheKey);
+  if (cachedData) return cachedData;
+
+  // 2. Query và đếm từ MongoDB
+  const categories = await SystemCategory.find().populate("image");
   const categoriesWithCount = await Promise.all(
     categories.map(async (category) => {
       const storeCount = await Store.countDocuments({
         systemCategoryId: category._id,
       });
-
       return {
         _id: category._id,
         name: category.name,
@@ -26,8 +38,12 @@ const getAllSystemCategoriesWithStoreCountService = async () => {
     })
   );
 
+  // 3. Lưu cache 3 phút
+  await cacheService.set(cacheKey, categoriesWithCount, REDIS_TTL.SHORT);
+
   return categoriesWithCount;
 };
+
 
 const getSystemCategoryByIdService = async (id) => {
   if (!id) throw ErrorCode.SYSTEM_CATEGORY_NOT_FOUND;

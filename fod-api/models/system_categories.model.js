@@ -1,4 +1,6 @@
 const mongoose = require('mongoose');
+const cacheService = require('../utils/redis/cache.service');
+const { REDIS_KEYS } = require('../constants/redisKeys.constant');
 const { Schema } = mongoose;
 
 const SystemCategorySchema = new Schema({
@@ -16,5 +18,15 @@ SystemCategorySchema.virtual('images', {
   foreignField: '_id',
   justOne: true
 });
+
+const clearCategoryCache = async () => {
+  console.log("[SYSTEM CATEGORY HOOK] Auto clearing system categories cache");
+  await cacheService.del(REDIS_KEYS.SYSTEM_CATEGORIES);
+};
+
+SystemCategorySchema.post("save", clearCategoryCache);
+SystemCategorySchema.post("findOneAndUpdate", clearCategoryCache);
+SystemCategorySchema.post("findOneAndDelete", clearCategoryCache);
+
 
 module.exports = mongoose.model('system_categories', SystemCategorySchema);
