@@ -1,0 +1,20 @@
+import { instance } from "@/utils/axiosConfig";
+import { handleApiResponse } from "@/utils/apiHelper";
+
+const getAllStore = async ({ keyword, category, sort, limit, page, lat, lon }) => {
+  return handleApiResponse(
+    instance.get(`/store/all`, {
+      params: { keyword, category, sort, limit, page },
+    }),
+    { showToast: false } // no toast
+  );
+};
+
+const getStoreInformation = async (id) => {
+  return handleApiResponse(instance.get(`/store/${id}`), { showToast: false }); // no toast
+};
+
+export const storeService = {
+  getAllStore,
+  getStoreInformation,
+};

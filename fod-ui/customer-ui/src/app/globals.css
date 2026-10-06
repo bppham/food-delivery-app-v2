@@ -1,0 +1,163 @@
+@import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700&display=swap");
+
+/* --------------------------------------
+   🌈 Theme Variables
+-------------------------------------- */
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --brand: #ef4444;
+  --brand-light: #f87171;
+  --brand-dark: #b91c1c;
+  --surface: #fafafa;
+  --border: #e5e7eb;
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --radius-base: 12px;
+}
+
+/* --------------------------------------
+   🩶 Base Styles
+-------------------------------------- */
+html, body {
+  padding: 0;
+  margin: 0;
+  font-family: "Inter", "Roboto", sans-serif;
+  background-color: var(--background);
+  color: var(--text-primary);
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
+
+a {
+  /* color: var(--brand); */
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+a:hover {
+  /* color: var(--brand-dark); */
+}
+
+button, a, input, textarea {
+  transition: all 0.25s ease;
+  outline: none;
+}
+
+button {
+  cursor: pointer;
+  font-weight: 500;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+/* --------------------------------------
+   🌐 Scrollbar Styling
+-------------------------------------- */
+@media (min-width: 768px) {
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+  ::-webkit-scrollbar-thumb {
+    border-radius: 10px;
+    background-color: #5c5c5c4b;
+  }
+}
+
+/* --------------------------------------
+   🧭 Swiper Customization
+-------------------------------------- */
+.swiper-button-prev,
+.swiper-button-next {
+  color: white !important;
+  font-weight: 700 !important;
+  z-index: 98;
+  text-shadow: 0 0 5px rgba(0, 0, 0, 0.6);
+}
+
+.swiper-button-next:after,
+.swiper-button-prev:after {
+  font-size: 24px !important;
+  font-weight: 700 !important;
+}
+
+.big-card-slider .swiper-button-next,
+.big-card-slider .swiper-button-prev {
+  top: 40%;
+}
+
+/* Pagination bullets */
+.swiper-horizontal > .swiper-pagination-bullets,
+.swiper-pagination-bullets.swiper-pagination-horizontal {
+  left: 40% !important;
+  bottom: 10% !important;
+}
+
+@media (max-width: 768px) {
+  .swiper-horizontal > .swiper-pagination-bullets,
+  .swiper-pagination-bullets.swiper-pagination-horizontal {
+    bottom: 6% !important;
+  }
+}
+
+.swiper-pagination-bullet {
+  border-radius: 2px !important;
+  background-color: #d1d5db !important;
+}
+.swiper-pagination-bullet-active {
+  background-color: var(--brand) !important;
+  width: 14px !important;
+}
+
+/* --------------------------------------
+   🗺️ Mapbox Fix
+-------------------------------------- */
+.mapboxgl-canvas {
+  width: 100% !important;
+}
+
+/* --------------------------------------
+   🔐 Custom Google Login Button
+-------------------------------------- */
+.login-google__button > div {
+  height: 55px !important;
+  background-color: var(--brand);
+  color: white;
+  border-radius: var(--radius-base);
+}
+
+.login-google__button .nsm7Bb-HzV7m-LgbsSe {
+  background-color: inherit;
+  color: inherit;
+  border: none;
+  width: 100%;
+  height: 55px;
+  padding: 0 20px;
+  font-size: 18px;
+  border-radius: var(--radius-base);
+}
+
+/* --------------------------------------
+   ✨ Utility Enhancements
+-------------------------------------- */
+.card {
+  background-color: var(--surface);
+  border-radius: var(--radius-base);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.04);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+}
+
+.fade-in {
+  animation: fadeIn 0.4s ease-in-out;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
