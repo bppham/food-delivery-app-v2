@@ -11,9 +11,10 @@ const REDIS_TTL = {
 const REDIS_KEYS = {
     SYSTEM_CATEGORIES: 'fod:categories:all',
     STORE_DETAIL: (storeId) => `fod:stores:${storeId}`,
-    STORE_DISHES: (storeId) => `fod:dishes:store:${storeId}`,
     STORE_LIST_PATTERN: 'fod:stores:list:*',
-
+    STORE_DISHES: (storeId, category = 'all', page = 1, limit = 10, sortBy = 'name', order = 'asc') =>
+        `fod:dishes:store:${storeId}:c_${category}:p_${page}:l_${limit}:s_${sortBy}_${order}`,
+    STORE_DISHES_PATTERN: (storeId) => `fod:dishes:store:${storeId}:*`,
     OTP_FORGOT: (role, email) => `fod:otp:forgot:${role}:${email}`,
     OTP_RATE_LIMIT: (role, email) => `fod:otp:ratelimit:${role}:${email}`,
     RESET_TOKEN: (token) => `fod:reset_token:${token}`,
