@@ -158,6 +158,55 @@ const cacheService = {
             return false;
         }
     },
+
+    /**
+     * 8. Xin khóa phân tán (Distributed Lock)
+     * @param {string} lockKey - Key của khóa (vd: fod:locks:order:123)
+     * @param {string} lockValue - Định danh người giữ khóa (shipperId)
+     * @param {number} ttlMs - Thời gian giữ khóa tính bằng mili-giây (mặc định 5000ms = 5 giây)
+     * @returns {Promise<boolean>} true: lấy được khóa; false: bị người khác chiếm trước
+     */
+    async acquireLock(lockKey, lockValue, ttlMs = 5000) {
+        try {
+            if (!redisClient.isReady) return true; // Fallback nếu Redis có sự cố để không chặn nghiệp vụ
+            // Lệnh SET ... NX PX: Chỉ set nếu Chưa Tồn Tại, tự hủy sau ttlMs
+            const result = await redisClient.set(lockKey, lockValue.toString(), {
+                PX: ttlMs,
+                NX: true,
+            });
+            return result === 'OK';
+        } catch (error) {
+            console.error(`❌ Acquire Lock Error [${lockKey}]:`, error.message);
+            return true; // Fallback an toàn cho MongoDB xử lý tiếp
+        }
+    },
+
+    /**
+     * 9. Giải phóng khóa an toàn bằng Lua Script
+     * (Đảm bảo chỉ đúng người tạo khóa mới được quyền xóa khóa)
+     */
+    async releaseLock(lockKey, lockValue) {
+        try {
+            if (!redisClient.isReady) return false;
+            // Script Lua nguyên tử: Kiểm tra giá trị bên trong khớp mới xóa
+            const luaScript = `
+                if redis.call("get", KEYS[1]) == ARGV[1] then
+                    return redis.call("del", KEYS[1])
+                else
+                    return 0
+                end
+            `;
+            const result = await redisClient.eval(luaScript, {
+                keys: [lockKey],
+                arguments: [lockValue.toString()],
+            });
+            return result === 1;
+        } catch (error) {
+            console.error(`❌ Release Lock Error [${lockKey}]:`, error.message);
+            return false;
+        }
+    },
+
 };
 
 module.exports = cacheService;

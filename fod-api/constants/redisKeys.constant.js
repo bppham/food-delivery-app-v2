@@ -24,6 +24,8 @@ const REDIS_KEYS = {
 
     SHIPPERS_LOCATIONS: 'fod:shippers:locations', // Sorted Set chứa toàn bộ GPS của các shipper
     SHIPPER_ONLINE: (shipperId) => `fod:shippers:online:${shipperId}`, // TTL 60s (Heartbeat)
+
+    ORDER_LOCK: (orderId) => `fod:order:lock:${orderId}`, // Lock đảm bảo chỉ 1 tài xế nhận đơn cùng lúc
 };
 
 module.exports = {

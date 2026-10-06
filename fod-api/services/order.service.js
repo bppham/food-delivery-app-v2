@@ -18,6 +18,8 @@ const Shipper = require("../models/shippers.model");
 const Staff = require("../models/staffs.model");
 const Store = require("../models/stores.model");
 const OrderHistory = require("../models/order_histories.model");
+const cacheService = require("../utils/redis/cache.service");
+const { REDIS_KEYS } = require("../constants/redisKeys.constant");
 const { findNearestShipper } = require("../utils/shipper");
 // Sockets
 const { getIo, getUserSockets } = require("../utils/socketManager");
@@ -869,6 +871,14 @@ const cancelOrderService = async (userId, orderId) => {
 
 // SHIPPER SERVICES INTERACT WITH ORDERS
 const takeOrderService = async (shipperId, orderId) => {
+  const lockKey = REDIS_KEYS.ORDER_LOCK(orderId);
+  const isLocked = await cacheService.acquireLock(lockKey, shipperId, 5000);
+  if (!isLocked) {
+    throw ErrorCode.ORDER_ALREADY_TAKEN;
+  }
+
+
+
   const session = await Order.startSession();
 
   try {
@@ -919,6 +929,7 @@ const takeOrderService = async (shipperId, orderId) => {
     throw error;
   } finally {
     session.endSession();
+    await cacheService.releaseLock(lockKey, shipperId);
   }
 };
 
