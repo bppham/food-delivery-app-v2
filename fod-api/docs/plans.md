@@ -339,6 +339,7 @@ Dưới đây là danh mục toàn bộ các bài toán trong dự án FOD sẽ 
 - [ ] Tạo Delayed Job tự động hủy đơn VNPay sau 15 phút nếu chưa thanh toán
 - [ ] Tạo Delayed Job chuyển đơn sang shipper khác sau 30 giây
 - [ ] Thay thế `node-cron` bằng BullMQ Repeatable Jobs
+- [ ] Tạo Repeatable Job (Worker 15 phút) tính toán trước số liệu thống kê Dashboard (Số quán theo danh mục `with_count`, doanh thu) lưu vào Redis
 
 ### 📌 Giai đoạn 3: Meilisearch (Search Engine)
 - [ ] Chạy container Meilisearch trong `docker-compose.yml`

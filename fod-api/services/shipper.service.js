@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const Account = require("../models/accounts.model");
 const Shipper = require("../models/shippers.model");
 const ErrorCode = require("../constants/errorCodes.enum");
+const cacheService = require("../utils/redis/cache.service")
 
 // Request
 const getShipperRequestsService = async (
@@ -174,9 +175,8 @@ const toggleShipperAccountStatusService = async (shipperId) => {
   return {
     success: true,
     blocked: account.blocked,
-    message: `Account has been ${
-      account.blocked ? "blocked" : "unblocked"
-    } successfully.`,
+    message: `Account has been ${account.blocked ? "blocked" : "unblocked"
+      } successfully.`,
   };
 };
 
@@ -196,6 +196,10 @@ const updateCurrentLocationService = async (shipperId, payload) => {
   shipper.currentLocation.updatedAt = new Date();
   await shipper.save();
 
+  if (payload.lon && payload.lat) {
+    await cacheService.updateShipperLocation(shipperId, payload.lon, payload.lat);
+  }
+
   // Trả về shipper đầy đủ
   return shipper;
 };
@@ -205,7 +209,7 @@ const updateOnlineStatusService = async (shipperId, payload) => {
   const shipper = await Shipper.findById(shipperId);
   if (!shipper) throw ErrorCode.SHIPPER_NOT_FOUND;
 
-   shipper.online = payload.online; 
+  shipper.online = payload.online;
   await shipper.save();
 
   return shipper;

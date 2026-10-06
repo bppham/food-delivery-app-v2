@@ -18,6 +18,12 @@ const REDIS_KEYS = {
     OTP_FORGOT: (role, email) => `fod:otp:forgot:${role}:${email}`,
     OTP_RATE_LIMIT: (role, email) => `fod:otp:ratelimit:${role}:${email}`,
     RESET_TOKEN: (token) => `fod:reset_token:${token}`,
+
+
+
+
+    SHIPPERS_LOCATIONS: 'fod:shippers:locations', // Sorted Set chứa toàn bộ GPS của các shipper
+    SHIPPER_ONLINE: (shipperId) => `fod:shippers:online:${shipperId}`, // TTL 60s (Heartbeat)
 };
 
 module.exports = {

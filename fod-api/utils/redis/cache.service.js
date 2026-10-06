@@ -1,6 +1,6 @@
 // services/cache.service.js
 const { redisClient } = require("../../config/redis");
-
+const { REDIS_KEYS } = require("../../constants/redisKeys.constant");
 const cacheService = {
     /**
      * 1. Lấy dữ liệu từ Redis
@@ -92,6 +92,71 @@ const cacheService = {
         }
 
         return freshData;
+    },
+
+
+    // Handle shipper location
+    /**
+     * 5. Lưu tọa độ GPS của Shipper vào Redis Geospatial
+     * (Lưu ý: Redis yêu cầu Kinh độ longitude TRƯỚC, Vĩ độ latitude SAU)
+     */
+    async updateShipperLocation(shipperId, longitude, latitude) {
+        try {
+            if (!redisClient.isReady) return false;
+            // Lưu tọa độ vào Geospatial Index
+            await redisClient.geoAdd(REDIS_KEYS.SHIPPERS_LOCATIONS, {
+                longitude: parseFloat(longitude),
+                latitude: parseFloat(latitude),
+                member: shipperId.toString(),
+            });
+            // Đặt cờ Heartbeat online 60 giây (tự offline nếu mất kết nối)
+            await redisClient.set(REDIS_KEYS.SHIPPER_ONLINE(shipperId), 1, { EX: 60 });
+            return true;
+        } catch (error) {
+            console.error("❌ GeoAdd Error:", error.message);
+            return false;
+        }
+    },
+    /**
+     * 6. Quét tìm danh sách Shipper trong bán kính (km) quanh tọa độ tâm
+     */
+    async findNearbyShippers(longitude, latitude, radiusKm = 3) {
+        try {
+            if (!redisClient.isReady) return [];
+            const results = await redisClient.geoSearchWith(
+                REDIS_KEYS.SHIPPERS_LOCATIONS,
+                { longitude: parseFloat(longitude), latitude: parseFloat(latitude) },
+                { radius: radiusKm, unit: 'km' },
+                ['WITHDIST', 'WITHCOORD'],
+                { SORT: 'ASC' } // Sắp xếp từ gần nhất đến xa nhất
+            );
+            // Chuẩn hóa kết quả trả về
+            return results.map(item => ({
+                shipperId: item.member,
+                distanceKm: parseFloat(item.distance),
+                coordinates: {
+                    longitude: parseFloat(item.coordinates.longitude),
+                    latitude: parseFloat(item.coordinates.latitude),
+                }
+            }));
+        } catch (error) {
+            console.error("❌ GeoSearch Error:", error.message);
+            return [];
+        }
+    },
+    /**
+     * 7. Xóa shipper khỏi danh sách online khi tài xế tắt app (Offline)
+     */
+    async removeShipperLocation(shipperId) {
+        try {
+            if (!redisClient.isReady) return false;
+            await redisClient.zRem(REDIS_KEYS.SHIPPERS_LOCATIONS, shipperId.toString());
+            await redisClient.del(REDIS_KEYS.SHIPPER_ONLINE(shipperId));
+            return true;
+        } catch (error) {
+            console.error("❌ GeoRemove Error:", error.message);
+            return false;
+        }
     },
 };
 
