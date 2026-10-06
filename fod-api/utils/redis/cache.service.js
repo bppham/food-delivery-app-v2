@@ -97,7 +97,7 @@ const cacheService = {
 
     // Handle shipper location
     /**
-     * 5. Lưu tọa độ GPS của Shipper vào Redis Geospatial
+     * 6. Lưu tọa độ GPS của Shipper vào Redis Geospatial
      * (Lưu ý: Redis yêu cầu Kinh độ longitude TRƯỚC, Vĩ độ latitude SAU)
      */
     async updateShipperLocation(shipperId, longitude, latitude) {
@@ -118,7 +118,7 @@ const cacheService = {
         }
     },
     /**
-     * 6. Quét tìm danh sách Shipper trong bán kính (km) quanh tọa độ tâm
+     * 7. Quét tìm danh sách Shipper trong bán kính (km) quanh tọa độ tâm
      */
     async findNearbyShippers(longitude, latitude, radiusKm = 3) {
         try {
@@ -145,7 +145,7 @@ const cacheService = {
         }
     },
     /**
-     * 7. Xóa shipper khỏi danh sách online khi tài xế tắt app (Offline)
+     * 8. Xóa shipper khỏi danh sách online khi tài xế tắt app (Offline)
      */
     async removeShipperLocation(shipperId) {
         try {
@@ -160,7 +160,7 @@ const cacheService = {
     },
 
     /**
-     * 8. Xin khóa phân tán (Distributed Lock)
+     * 9. Xin khóa phân tán (Distributed Lock)
      * @param {string} lockKey - Key của khóa (vd: fod:locks:order:123)
      * @param {string} lockValue - Định danh người giữ khóa (shipperId)
      * @param {number} ttlMs - Thời gian giữ khóa tính bằng mili-giây (mặc định 5000ms = 5 giây)
@@ -182,7 +182,7 @@ const cacheService = {
     },
 
     /**
-     * 9. Giải phóng khóa an toàn bằng Lua Script
+     * 10. Giải phóng khóa an toàn bằng Lua Script
      * (Đảm bảo chỉ đúng người tạo khóa mới được quyền xóa khóa)
      */
     async releaseLock(lockKey, lockValue) {
@@ -204,6 +204,21 @@ const cacheService = {
         } catch (error) {
             console.error(`❌ Release Lock Error [${lockKey}]:`, error.message);
             return false;
+        }
+    },
+
+    // Cron job
+    /**
+   * Kiểm tra nhanh shipper có đang thực sự online qua Redis Heartbeat không (0.01ms)
+   */
+    async isShipperOnline(shipperId) {
+        try {
+            if (!redisClient.isReady) return true; // Fallback an toàn
+            const exists = await redisClient.exists(REDIS_KEYS.SHIPPER_ONLINE(shipperId));
+            return exists === 1;
+        } catch (error) {
+            console.error(`❌ Check Shipper Online Error [${shipperId}]:`, error.message);
+            return true;
         }
     },
 

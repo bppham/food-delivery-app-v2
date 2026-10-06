@@ -18,15 +18,27 @@ const findNearestShipper = async (
 
   if (!nearbyShippers.length) return null;
 
-  // 2️⃣ Loại bỏ các shipper nằm trong danh sách loại trừ (đã từ chối đơn)
+  // 2️⃣ Loại bỏ shipper đã từ chối đơn VÀ kiểm tra Heartbeat 60s trên Redis
   const excludedIds = excludedShippers.map((id) => id.toString());
-  const validCandidates = nearbyShippers.filter(
-    (item) => !excludedIds.includes(item.shipperId)
-  );
+  const validCandidates = [];
+
+  for (const item of nearbyShippers) {
+    if (excludedIds.includes(item.shipperId)) continue;
+
+    // Kiểm tra tài xế có thực sự online không (kiểm tra key TTL 60s trên Redis)
+    const isOnline = await cacheService.isShipperOnline(item.shipperId);
+    if (!isOnline) {
+      // Tiện tay dọn dẹp luôn tài xế đã mất mạng / tắt app khỏi Redis Geospatial
+      await cacheService.removeShipperLocation(item.shipperId);
+      continue;
+    }
+
+    validCandidates.push(item);
+  }
 
   if (!validCandidates.length) return null;
 
-  // 3️⃣ Tìm các shipper đang rảnh trong danh sách ứng viên từ MongoDB
+  // 3️⃣ Tìm các shipper đang rảnh (busy: false) trong danh sách ứng viên từ MongoDB
   const candidateIds = validCandidates.map((item) => item.shipperId);
   const activeShippers = await Shipper.find({
     _id: { $in: candidateIds },

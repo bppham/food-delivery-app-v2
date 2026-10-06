@@ -73,7 +73,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 
-require("./crons/shipper_online.cron");
+// require("./crons/shipper_online.cron");
 require("./crons/ai.cron");
 
 PORT = process.env.PORT || 5000;

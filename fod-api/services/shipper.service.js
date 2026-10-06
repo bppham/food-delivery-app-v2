@@ -212,6 +212,15 @@ const updateOnlineStatusService = async (shipperId, payload) => {
   shipper.online = payload.online;
   await shipper.save();
 
+  if (!payload.online) {
+    await cacheService.removeShipperLocation(shipperId);
+  } else if (shipper.currentLocation?.coordinates?.length === 2) {
+    {
+      const [lon, lat] = shipper.currentLocation.coordinates;
+      await cacheService.updateShipperLocation(shipperId, lon, lat)
+    }
+  }
+
   return shipper;
 };
 
