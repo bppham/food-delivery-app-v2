@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
+const { createAndSaveOtp, verifyOtpAndGenerateResetToken } = require("../utils/otpHandling");
 const User = require("../models/users.model");
 const Store = require("../models/stores.model");
 const sendEmail = require("../utils/sendEmail");
@@ -97,8 +98,7 @@ const forgotPassword = async ({ email }) => {
   const user = await User.findOne({ email, isGoogleLogin: false });
   if (!user) throw ErrorCode.ACCOUNT_NOT_FOUND;
 
-  const otp = await user.createOtp();
-  await user.save();
+  const otp = await createAndSaveOtp(email, "user");
 
   const mailBody = `
     <p>Mã OTP của bạn là: ${otp}</p>
@@ -116,21 +116,8 @@ const forgotPassword = async ({ email }) => {
 
 // 📌 Verify OTP
 const verifyOtp = async ({ email, otp }) => {
-  const hashedOTP = crypto.createHash("sha256").update(otp).digest("hex");
-
-  const user = await User.findOne({
-    email,
-    otp: hashedOTP,
-    otpExpires: { $gt: Date.now() },
-  });
-
-  if (!user) throw ErrorCode.INVALID_OTP;
-
-  user.otp = undefined;
-  user.otpExpires = undefined;
-  await user.save();
-
-  return { response: { success: true, message: "OTP verified successfully" } };
+  if (!email || !otp) throw ErrorCode.MISSING_REQUIRED_FIELDS;
+  return await verifyOtpAndGenerateResetToken(email, otp, "user");
 };
 
 module.exports = {

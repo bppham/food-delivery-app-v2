@@ -5,6 +5,7 @@ const { REDIS_KEYS, REDIS_TTL } = require("../constants/redisKeys.constant");
 const ErrorCode = require("../constants/errorCodes.enum");
 const sendEmail = require("../utils/sendEmail");
 const crypto = require("crypto");
+const { verifyOtpAndGenerateResetToken, createAndSaveOtp } = require("../utils/otpHandling");
 const getProfileService = async (staffId) => {
   if (!staffId) throw ErrorCode.MISSING_REQUIRED_FIELDS;
 
@@ -84,8 +85,7 @@ const forgotPasswordService = async ({ email }) => {
   const user = await Staff.findOne({ email });
   if (!user) throw ErrorCode.ACCOUNT_NOT_FOUND;
 
-  const otp = await user.createOtp();
-  await user.save();
+  const otp = await createAndSaveOtp(email, "staff");
 
   const mailBody = `
   <div style="font-family: Arial, sans-serif; background-color: #f4f6f8; padding: 30px;">
@@ -129,20 +129,9 @@ const forgotPasswordService = async ({ email }) => {
 const verifyOtpService = async ({ email, otp }) => {
   if (!email || !otp) throw ErrorCode.MISSING_REQUIRED_FIELDS;
 
-  const staff = await Staff.findOne({ email }).populate("accountId");
-  if (!staff) throw ErrorCode.ACCOUNT_NOT_FOUND;
-
-  if (!staff.otp || !staff.otpExpires) throw ErrorCode.INVALID_OTP;
-
-  if (Date.now() > staff.otpExpires) throw ErrorCode.OTP_EXPIRED;
-
-  // Hash OTP đầu vào để so sánh với DB
-  const hashedOtp = crypto.createHash("sha256").update(otp).digest("hex");
-
-  if (hashedOtp !== staff.otp) throw ErrorCode.INVALID_OTP;
-
-  return { success: true, message: "OTP hợp lệ" };
+  return await verifyOtpAndGenerateResetToken(email, otp, "staff");
 };
+
 
 // 2️⃣ Reset mật khẩu bằng email (sau khi OTP hợp lệ)
 const resetPasswordWithEmailService = async ({ email, newPassword }) => {

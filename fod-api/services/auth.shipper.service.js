@@ -4,6 +4,7 @@ const Vehicle = require("../models/vehicles.model");
 const ErrorCode = require("../constants/errorCodes.enum");
 const sendEmail = require("../utils/sendEmail");
 const crypto = require("crypto");
+const { createAndSaveOtp, verifyOtpAndGenerateResetToken } = require("../utils/otpHandling");
 const mongoose = require("mongoose");
 /**
  * 1️⃣ Đăng ký tài khoản Shipper mới
@@ -215,12 +216,7 @@ const forgotPasswordService = async ({ email }) => {
   const shipper = await Shipper.findOne({ email });
   if (!shipper) throw ErrorCode.ACCOUNT_NOT_FOUND;
 
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  const hashedOtp = crypto.createHash("sha256").update(otp).digest("hex");
-
-  shipper.otp = hashedOtp;
-  shipper.otpExpires = Date.now() + 2 * 60 * 1000;
-  await shipper.save();
+  const otp = await createAndSaveOtp(email, "shipper");
 
   const mailBody = `
     <div style="font-family: Arial, sans-serif; background-color: #f4f6f8; padding: 30px;">
@@ -252,17 +248,7 @@ const forgotPasswordService = async ({ email }) => {
  */
 const verifyOtpService = async ({ email, otp }) => {
   if (!email || !otp) throw ErrorCode.MISSING_REQUIRED_FIELDS;
-
-  const shipper = await Shipper.findOne({ email });
-  if (!shipper) throw ErrorCode.ACCOUNT_NOT_FOUND;
-
-  if (!shipper.otp || !shipper.otpExpires) throw ErrorCode.INVALID_OTP;
-  if (Date.now() > shipper.otpExpires) throw ErrorCode.OTP_EXPIRED;
-
-  const hashedOtp = crypto.createHash("sha256").update(otp).digest("hex");
-  if (hashedOtp !== shipper.otp) throw ErrorCode.INVALID_OTP;
-
-  return { success: true, message: "OTP hợp lệ" };
+  return await verifyOtpAndGenerateResetToken(email, otp, "shipper");
 };
 
 /**
