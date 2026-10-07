@@ -1,6 +1,27 @@
 const nodemailer = require("nodemailer");
+const { publishMessage, getChannel } = require("../config/rabbitmq");
+const {
+  RABBIT_EXCHANGES,
+  RABBIT_ROUTING_KEYS,
+} = require("../constants/rabbitmq.constant");
 
 const sendEmail = async (data, req, res) => {
+  const channel = getChannel()
+
+  // 1. NẾU CÓ RABBITMQ: Bắn message vào Queue siêu tốc (1ms)
+  if (channel) {
+    const isPublished = await publishMessage(
+      RABBIT_EXCHANGES.NOTIFICATION,
+      RABBIT_ROUTING_KEYS.EMAIL_OTP,
+      data
+    );
+    if (isPublished) {
+      console.log(`🚀 [PRODUCER] Đã đẩy email tới ${data.to} vào RabbitMQ thành công!`);
+      return { success: true, queued: true };
+    }
+  }
+
+  console.warn("⚠️ RabbitMQ chưa sẵn sàng, đang fallback gửi trực tiếp...");
   let transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
     port: 587,

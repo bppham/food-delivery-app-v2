@@ -8,6 +8,9 @@ const cookieParser = require("cookie-parser");
 const http = require("http");
 const socketIo = require("socket.io");
 const { setSocketIo, getUserSockets } = require("./utils/socketManager");
+const { connectRabbitMQ } = require("./config/rabbitmq");
+const { startEmailConsumer } = require("./workers/email.consumer");
+
 const Notification = require("./models/notifications.model");
 
 // Route import
@@ -46,6 +49,9 @@ const { connectRedis } = require("./config/redis");
 const app = express();
 connectDB();
 connectRedis();
+connectRabbitMQ().then(() => {
+  startEmailConsumer();
+});
 
 app.get("/api/v1/health", (req, res) => {
   res.status(200).json({
