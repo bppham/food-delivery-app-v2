@@ -1,9 +1,15 @@
 import { authService } from "@/api/authService";
 import axios from "axios";
 
+const baseURL =
+  process.env.NEXT_PUBLIC_SERVER_URI ||
+  (process.env.NEXT_PUBLIC_API_URL
+    ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1`
+    : "http://localhost:5000/api/v1");
+
 export const instance = axios.create({
   withCredentials: true,
-  baseURL: `${process.env.NEXT_PUBLIC_API_URL}/api/v1`,
+  baseURL,
 });
 
 // Hàm config header với token hiện tại
@@ -31,7 +37,7 @@ instance.interceptors.response.use(
       try {
         // Gọi API refresh
         const refreshResponse = await axios.get(
-          "http://localhost:5000/api/v1/auth/refresh/user", 
+          `${baseURL}/auth/refresh/user`, 
           { withCredentials: true }
         )
 

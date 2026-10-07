@@ -7,7 +7,7 @@ import { useOrder } from "./orderContext";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 
-const ENDPOINT = "http://localhost:5000" || "";
+const ENDPOINT = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000";
 const SocketContext = createContext();
 
 export const SocketProvider = ({ children }) => {

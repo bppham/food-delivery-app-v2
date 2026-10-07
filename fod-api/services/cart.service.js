@@ -1,4 +1,7 @@
 const ErrorCode = require("../constants/errorCodes.enum");
+const { publishMessage } = require("../config/rabbitmq");
+const { RABBIT_EXCHANGES, RABBIT_ROUTING_KEYS } = require("../constants/rabbitmq.constant");
+
 const Cart = require("../models/carts.model");
 const CartItem = require("../models/cart_items.model");
 const CartItemTopping = require("../models/cart_item_toppings.model");
@@ -313,7 +316,7 @@ const upsertCartItem = async ({
             }).select('_id');
 
             if (validToppings.length !== toppings.length) {
-                
+
                 // Optional: Identify exactly which ones failed for better error logging
                 const validIds = validToppings.map(t => t._id.toString());
                 const invalidIds = toppings.filter(id => !validIds.includes(id));
@@ -342,10 +345,10 @@ const upsertCartItem = async ({
 
         // --- 4. Create Cart & Participant if they don't exist (and we are adding) ---
         const targetQty = action === "remove_item" ? 0 : Math.max(0, quantity);
-        
+
         if (!cart && targetQty > 0) {
             cart = await Cart.create({ userId, storeId, mode: "private" });
-            
+
             cartParticipant = await CartParticipant.create({
                 cartId: cart._id,
                 userId: userId,
@@ -354,15 +357,15 @@ const upsertCartItem = async ({
                 joinedAt: new Date(),
             });
         }
-        
+
         // If cart doesn't exist and we're not adding, exit
         if (!cart || !cartParticipant) {
-             return { message: "No cart found or created." };
+            return { message: "No cart found or created." };
         }
 
         // --- [CHANGES START] ---
         // --- 5. Find Identical Existing Item (Group Logic) ---
-        
+
         // Prepare query values
         const noteQueryValue = note || "";
         const noteQuery = (noteQueryValue === "") ? { $in: ["", null, undefined] } : noteQueryValue;
@@ -425,17 +428,17 @@ const upsertCartItem = async ({
                 // Update quantity and note
                 itemToUpsert.quantity = targetQty;
                 itemToUpsert.note = note || ""; // Update note
-                
+
                 // Recalculate price (toppings might have changed, though logic finds identical)
                 const toppingDetails = await Topping.find({ _id: { $in: toppings } });
                 const dishPrice = (dish.price || 0) * targetQty;
-                const toppingsPrice = 
-                    (toppingDetails.reduce((sum, t) => sum + (t.price || 0), 0) || 0) 
+                const toppingsPrice =
+                    (toppingDetails.reduce((sum, t) => sum + (t.price || 0), 0) || 0)
                     * targetQty;
                 itemToUpsert.lineTotal = dishPrice + toppingsPrice;
 
                 await itemToUpsert.save();
-                
+
                 // Re-create toppings (to ensure sync, though they shouldn't change)
                 await CartItemTopping.deleteMany({ cartItemId: itemToUpsert._id });
                 for (const topping of toppingDetails) {
@@ -448,15 +451,15 @@ const upsertCartItem = async ({
                 }
             }
         } else if (targetQty > 0) {
-            
+
             const toppingDetails = await Topping.find({ _id: { $in: toppings } });
-            
+
             // Calculate prices
             const dishPrice = dish.price || 0;
-            const toppingsPricePerItem = 
+            const toppingsPricePerItem =
                 toppingDetails.reduce((sum, t) => sum + (t.price || 0), 0) || 0;
             const finalLineTotal = (dishPrice + toppingsPricePerItem) * targetQty;
-            
+
             const createdItem = await CartItem.create({
                 cartId: cart._id,
                 dishId: dish._id,
@@ -682,10 +685,10 @@ const completeCart = async ({
 
             // <--- NEW: Check & Deduct Stock using Helper
             if (!item.dishId) throw ErrorCode.DISH_NOT_FOUND;
-            
+
             const isStockSecured = await ensureStockAvailable(
-                item.dishId, 
-                item.quantity, 
+                item.dishId,
+                item.quantity,
                 session
             );
 
@@ -704,7 +707,7 @@ const completeCart = async ({
         for (const voucherId of vouchers) {
             // Read voucher with session
             const voucher = await Voucher.findById(voucherId).session(session);
-            
+
             if (!voucher || !voucher.isActive) continue;
             if (voucher.startDate > now || voucher.endDate < now) continue;
             if (voucher.minOrderAmount && subtotalPrice < voucher.minOrderAmount)
@@ -762,7 +765,7 @@ const completeCart = async ({
                     toppingName: topping.toppingId?.name || "",
                     price: topping.toppingId?.price || 0,
                 }));
-                
+
                 await OrderItemTopping.create(toppingInserts, { session });
             }
         }
@@ -833,7 +836,7 @@ const completeCart = async ({
 
     try {
         const io = getIo();
-        
+
         // Notify Store
         if (storeSockets[storeId]) {
             console.log("🧩 Active store sockets:", storeSockets[storeId]);
@@ -1254,83 +1257,83 @@ const upsertGroupCartItem = async ({
 
     // --- UPDATE_ITEM ---
     if (action === 'update_item') {
-            let needsSave = false;
-            
-            // --- FIX 1: Khai báo biến này bên ngoài ---
-            // Biến này sẽ giữ chi tiết topping để tính toán lineTotal
-            let finalToppingDetails = []; 
-        
-            // Update Quantity
-            if (quantity !== undefined) {
-              const newQty = Math.max(0, quantity);
-              if (newQty === 0) {
+        let needsSave = false;
+
+        // --- FIX 1: Khai báo biến này bên ngoài ---
+        // Biến này sẽ giữ chi tiết topping để tính toán lineTotal
+        let finalToppingDetails = [];
+
+        // Update Quantity
+        if (quantity !== undefined) {
+            const newQty = Math.max(0, quantity);
+            if (newQty === 0) {
                 // Quantity 0 means remove
                 return upsertGroupCartItem({ userId, itemId, action: 'remove_item' });
-              }
-              itemToUpdate.quantity = newQty;
-              needsSave = true;
             }
-            
-            // Update Note
-            if (note !== undefined) {
-              itemToUpdate.note = note;
-              needsSave = true;
-            }
-            
-            // Update Toppings
-            if (toppings !== undefined) { // `toppings` là một mảng ID
-              await CartItemTopping.deleteMany({ cartItemId: itemToUpdate._id });
-              
-              // Query các topping mới
-              const newToppingDetails = await Topping.find({ _id: { $in: toppings } });
-              
-              for (const topping of newToppingDetails) {
+            itemToUpdate.quantity = newQty;
+            needsSave = true;
+        }
+
+        // Update Note
+        if (note !== undefined) {
+            itemToUpdate.note = note;
+            needsSave = true;
+        }
+
+        // Update Toppings
+        if (toppings !== undefined) { // `toppings` là một mảng ID
+            await CartItemTopping.deleteMany({ cartItemId: itemToUpdate._id });
+
+            // Query các topping mới
+            const newToppingDetails = await Topping.find({ _id: { $in: toppings } });
+
+            for (const topping of newToppingDetails) {
                 await CartItemTopping.create({
-                  cartItemId: itemToUpdate._id,
-                  toppingId: topping._id,
-                  toppingName: topping.name,
-                  price: topping.price,
+                    cartItemId: itemToUpdate._id,
+                    toppingId: topping._id,
+                    toppingName: topping.name,
+                    price: topping.price,
                 });
-              }
-              
-              // --- FIX 2: Lưu các topping MỚI để tính giá ---
-              finalToppingDetails = newToppingDetails;
-              needsSave = true;
-            } else if (needsSave) {
-              // --- FIX 3: (Quan trọng) Nếu chỉ cập nhật số lượng/ghi chú ---
-              // Chúng ta phải tải các topping HIỆN CÓ để tính lineTotal cho đúng
-              const existingToppings = await CartItemTopping.find({ cartItemId: itemToUpdate._id })
-                  .populate({ path: 'toppingId', select: 'price' }) // Chỉ cần lấy giá
-                  .lean();
-              
-              // Chuyển đổi về định dạng giống như `Topping.find` (chỉ chứa đối tượng topping)
-              finalToppingDetails = existingToppings.map(t => t.toppingId).filter(Boolean);
             }
-        
-            if (needsSave) {
-              // Tính toán lại lineTotal CHÍNH XÁC
-              const dishPrice = (itemToUpdate.price || 0) * itemToUpdate.quantity;
-        
-              // --- FIX 4: Sử dụng biến đã được khai báo ở phạm vi ngoài ---
-              const toppingsPrice =
-                  (finalToppingDetails.reduce((sum, t) => sum + (t.price || 0), 0) || 0) 
-                    * itemToUpdate.quantity;
-        
-              itemToUpdate.lineTotal = dishPrice + toppingsPrice; // <--- ĐÃ SỬA
-              await itemToUpdate.save();
-            }
-            
-            await broadcastCartUpdate(cart._id, "item_updated", {
-              _id: itemToUpdate._id,
-              quantity: itemToUpdate.quantity,
-              note: itemToUpdate.note,
-              toppings: toppings, // `toppings` ở đây là mảng ID (nếu được gửi)
-              participantId: itemToUpdate.participantId,
-              updatedBy: userId,
-            });
-            
-            return itemToUpdate;
-          }
+
+            // --- FIX 2: Lưu các topping MỚI để tính giá ---
+            finalToppingDetails = newToppingDetails;
+            needsSave = true;
+        } else if (needsSave) {
+            // --- FIX 3: (Quan trọng) Nếu chỉ cập nhật số lượng/ghi chú ---
+            // Chúng ta phải tải các topping HIỆN CÓ để tính lineTotal cho đúng
+            const existingToppings = await CartItemTopping.find({ cartItemId: itemToUpdate._id })
+                .populate({ path: 'toppingId', select: 'price' }) // Chỉ cần lấy giá
+                .lean();
+
+            // Chuyển đổi về định dạng giống như `Topping.find` (chỉ chứa đối tượng topping)
+            finalToppingDetails = existingToppings.map(t => t.toppingId).filter(Boolean);
+        }
+
+        if (needsSave) {
+            // Tính toán lại lineTotal CHÍNH XÁC
+            const dishPrice = (itemToUpdate.price || 0) * itemToUpdate.quantity;
+
+            // --- FIX 4: Sử dụng biến đã được khai báo ở phạm vi ngoài ---
+            const toppingsPrice =
+                (finalToppingDetails.reduce((sum, t) => sum + (t.price || 0), 0) || 0)
+                * itemToUpdate.quantity;
+
+            itemToUpdate.lineTotal = dishPrice + toppingsPrice; // <--- ĐÃ SỬA
+            await itemToUpdate.save();
+        }
+
+        await broadcastCartUpdate(cart._id, "item_updated", {
+            _id: itemToUpdate._id,
+            quantity: itemToUpdate.quantity,
+            note: itemToUpdate.note,
+            toppings: toppings, // `toppings` ở đây là mảng ID (nếu được gửi)
+            participantId: itemToUpdate.participantId,
+            updatedBy: userId,
+        });
+
+        return itemToUpdate;
+    }
 
     // --- ADD_ITEM ---
     if (action === "add_item") {

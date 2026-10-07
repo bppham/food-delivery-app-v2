@@ -31,10 +31,13 @@ export const calculateTravelTime = (distance, speed = 40) => {
 
 export const groupStoresByCategory = (stores) => {
   const groupedStores = {};
+  if (!Array.isArray(stores)) return [];
 
   stores.forEach((store) => {
+    if (!Array.isArray(store?.systemCategoryId)) return;
     store.systemCategoryId.forEach((category) => {
       const categoryId = category?._id;
+      if (!categoryId) return;
 
       if (!groupedStores[categoryId]) {
         groupedStores[categoryId] = {

@@ -15,9 +15,10 @@ const CategorySlider = () => {
     const fetchCategories = async () => {
       try {
         const result = await systemCategoryService.getAllSystemCategory();
-        setAllCategories(result.data);
+        setAllCategories(result?.data || []);
       } catch (error) {
         console.error("Failed to fetch categories", error);
+        setAllCategories([]);
       } finally {
         setLoading(false);
       }
@@ -32,6 +33,10 @@ const CategorySlider = () => {
         <div className="animate-pulse text-gray-400 text-sm">Đang tải danh mục...</div>
       </div>
     );
+  }
+
+  if (!allCategories?.length) {
+    return null;
   }
 
   return (
@@ -50,7 +55,7 @@ const CategorySlider = () => {
           1280: { slidesPerView: 10, spaceBetween: 24 },
         }}
       >
-        {allCategories.map((type) => (
+        {allCategories?.map((type) => (
           <SwiperSlide key={type._id} className=" py-4">
             <div className="flex justify-center">
               <CategoryItem type={type} />

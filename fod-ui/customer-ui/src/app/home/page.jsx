@@ -24,9 +24,16 @@ const Page = () => {
     const { setUserId, userId } = useAuth();
 
     useEffect(() => {
-        const userId = JSON.parse(localStorage.getItem("userId"));
-        setUserId(userId);
-    }, []);
+        try {
+            const raw = localStorage.getItem("userId");
+            if (raw) {
+                const parsedId = JSON.parse(raw);
+                if (parsedId && !userId) setUserId(parsedId);
+            }
+        } catch (e) {
+            console.error("Lỗi parse userId:", e);
+        }
+    }, [userId]);
 
     if (storeLoading) {
         return (

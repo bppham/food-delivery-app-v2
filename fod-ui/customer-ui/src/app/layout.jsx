@@ -3,7 +3,6 @@
 import "./globals.css";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { HelmetProvider } from "react-helmet-async";
 import { ThreeDot } from "react-loading-indicators";
 
 // Contexts
@@ -43,8 +42,7 @@ export default function RootLayout({ children }) {
     return (
         <html lang="en">
             <body className="min-h-screen bg-[var(--background)] text-[var(--text-primary)] antialiased">
-                <HelmetProvider>
-                    <ForgotPassEmailProvider>
+                <ForgotPassEmailProvider>
                         <AuthProvider>
                             <StoreLocationProvider>
                                 <LocationProvider>
@@ -91,7 +89,6 @@ export default function RootLayout({ children }) {
                             </StoreLocationProvider>
                         </AuthProvider>
                     </ForgotPassEmailProvider>
-                </HelmetProvider>
             </body>
         </html>
     );

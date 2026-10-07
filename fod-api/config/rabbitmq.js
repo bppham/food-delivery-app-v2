@@ -16,16 +16,26 @@ const connectRabbitMQ = async () => {
         await channel.assertExchange(RABBIT_EXCHANGES.NOTIFICATION, "direct", {
             durable: true
         })
+        await channel.assertExchange(RABBIT_EXCHANGES.ORDER, "topic", {
+            durable: true,
+        });
 
         // 2. Tạo Queue nhận email
         await channel.assertQueue(RABBIT_QUEUES.EMAIL_OTP, {
+            durable: true,
+        });
+        await channel.assertQueue(RABBIT_QUEUES.ORDER_EMAIL_INVOICE, {
             durable: true,
         });
 
 
         // 3. Nối (Bind) Queue vào Exchange với Routing Key tương ứng
         await channel.bindQueue(RABBIT_QUEUES.EMAIL_OTP, RABBIT_EXCHANGES.NOTIFICATION, RABBIT_ROUTING_KEYS.EMAIL_OTP)
-
+        await channel.bindQueue(
+            RABBIT_QUEUES.ORDER_EMAIL_INVOICE,
+            RABBIT_EXCHANGES.ORDER,
+            RABBIT_ROUTING_KEYS.ORDER_PLACED
+        );
         console.log("✅ RabbitMQ đã kết nối & khởi tạo Exchange/Queue thành công!");
 
         connection.on("error", (err) => {

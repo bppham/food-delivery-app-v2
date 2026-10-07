@@ -51,6 +51,7 @@ connectDB();
 connectRedis();
 connectRabbitMQ().then(() => {
   startEmailConsumer();
+  startOrderInvoiceConsumer();
 });
 
 app.get("/api/v1/health", (req, res) => {
@@ -295,6 +296,7 @@ app.get("/logs/stream", (req, res) => {
 });
 
 const os = require("os");
+const { startOrderInvoiceConsumer } = require("./workers/orderInvoice.consumer");
 const networkInterfaces = os.networkInterfaces();
 const address = Object.values(networkInterfaces)
   .flat()

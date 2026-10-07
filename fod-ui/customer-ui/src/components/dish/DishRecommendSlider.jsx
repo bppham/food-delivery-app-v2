@@ -7,12 +7,12 @@ import { recommendService } from "@/api/recommendService"
 import "swiper/css";
 import "swiper/css/navigation";
 import { toast } from "react-toastify";
+import { useAuth } from "@/context/authContext";
 
 const DishRecommendSlider = () => {
-  const [dishes, setDishes] = useState();
+  const [dishes, setDishes] = useState([]);
+  const { userId } = useAuth();
 
-  const userId = JSON.parse(localStorage.getItem("userId"));
-  console.log(userId)
   useEffect(() => {
     const fetchRecommend = async () => {
       try {

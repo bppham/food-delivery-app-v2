@@ -29,9 +29,9 @@ export const useStoreSearch = (query) => {
           storeService.getAllStore({ sort: "standout", lat, lon }),
         ]);
 
-        setAllStore(all.data);
-        setRatingStore(rating.data);
-        setStandoutStore(standout.data);
+        setAllStore(all?.data || { data: [], total: 0 });
+        setRatingStore(rating?.data || { data: [], total: 0 });
+        setStandoutStore(standout?.data || { data: [], total: 0 });
       } catch (err) {
         console.error("Failed to fetch stores:", err);
         setError(err);

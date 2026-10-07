@@ -53,9 +53,10 @@ const CategoryFilter = ({ currentCategory }) => {
     const fetchCategories = async () => {
       try {
         const result = await systemCategoryService.getAllSystemCategory();
-        setAllCategories(result.data);
+        setAllCategories(result?.data || []);
       } catch (error) {
         console.error(error);
+        setAllCategories([]);
       }
     };
     fetchCategories();
@@ -68,7 +69,7 @@ const CategoryFilter = ({ currentCategory }) => {
       </div>
 
       <div className='max-h-[400px] overflow-auto small-scrollbar'>
-        {allCategories.map((category) => (
+        {allCategories?.map((category) => (
           <div
             key={category?._id}
             onClick={() => handleCategoryClick(category?._id)}

@@ -58,10 +58,11 @@ const Header = ({ page }) => {
                         >
                             <Image
                                 src="/assets/logo_app.jpg"
-                                layout="fill"
-                                objectFit="contain"
+                                fill
+                                sizes="60px"
                                 alt="Logo"
-                                className="hover:scale-105 transition-transform"
+                                priority
+                                className="object-contain hover:scale-105 transition-transform"
                             />
                         </Link>
 
