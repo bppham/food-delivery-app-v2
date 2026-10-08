@@ -10,7 +10,7 @@ const socketIo = require("socket.io");
 const { setSocketIo, getUserSockets } = require("./utils/socketManager");
 const { connectRabbitMQ } = require("./config/rabbitmq");
 const { startEmailConsumer } = require("./workers/email.consumer");
-
+const { startOrderInvoiceConsumer } = require("./workers/orderInvoice.consumer");
 const Notification = require("./models/notifications.model");
 
 // Route import
@@ -296,7 +296,7 @@ app.get("/logs/stream", (req, res) => {
 });
 
 const os = require("os");
-const { startOrderInvoiceConsumer } = require("./workers/orderInvoice.consumer");
+
 const networkInterfaces = os.networkInterfaces();
 const address = Object.values(networkInterfaces)
   .flat()

@@ -594,6 +594,7 @@ const clearAllCarts = async (userId) => {
     return { message: "All carts cleared successfully" };
 };
 
+
 /**
  * Complete cart => create order.
  * I left heavy logic minimal here; your existing completeCart implementation was robust.
@@ -632,7 +633,8 @@ const completeCart = async ({
     session.startTransaction();
 
     let newOrder; // Scope variable outside try block for socket usage later
-
+    let store;
+    let itemsWithToppings = [];
     try {
         // Pass session to queries using .session(session) or options { session }
         const cart = await Cart.findOne({
@@ -664,7 +666,7 @@ const completeCart = async ({
             .lean();
 
         // attach toppings to items (In-memory logic, no session needed)
-        const itemsWithToppings = cartItems.map((item) => {
+        itemsWithToppings = cartItems.map((item) => {
             const toppings = itemToppings.filter(
                 (t) => t.cartItemId.toString() === item._id.toString()
             );
@@ -804,7 +806,7 @@ const completeCart = async ({
         await cart.save({ session });
 
         // notify store owner (Read & Write)
-        const store = await Store.findById(storeId).session(session);
+        store = await Store.findById(storeId).session(session);
         await Notification.create([{
             userId: store.owner,
             orderId: newOrder._id,
@@ -833,6 +835,27 @@ const completeCart = async ({
     } finally {
         session.endSession();
     }
+
+
+    publishMessage(RABBIT_EXCHANGES.ORDER, RABBIT_ROUTING_KEYS.ORDER_PLACED, {
+        orderId: newOrder._id,
+        orderNumber: newOrder.orderNumber,
+        userId,
+        customerName,
+        customerPhone: customerPhonenumber,
+        deliveryAddress: `${detailAddress ? detailAddress + ", " : ""}${deliveryAddress}`,
+        storeName: store?.name || "Quán ăn",
+        items: itemsWithToppings.map((item) => ({
+            name: item.dishId?.name || "Món ăn",
+            quantity: item.quantity,
+            price: item.dishId?.price || 0,
+        })),
+        subtotalPrice: newOrder.subtotalPrice,
+        shippingFee: newOrder.shippingFee,
+        totalDiscount: newOrder.totalDiscount,
+        finalTotal: newOrder.finalTotal,
+        paymentMethod: newOrder.paymentMethod,
+    })
 
     try {
         const io = getIo();
