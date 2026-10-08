@@ -11,7 +11,9 @@ const { setSocketIo, getUserSockets } = require("./utils/socketManager");
 const { connectRabbitMQ } = require("./config/rabbitmq");
 const { startEmailConsumer } = require("./workers/email.consumer");
 const { startOrderInvoiceConsumer } = require("./workers/orderInvoice.consumer");
+const { startShipperDispatcherConsumer } = require("./workers/shipperDispatcher.consumer");
 const Notification = require("./models/notifications.model");
+const os = require("os");
 
 // Route import
 const authRoute = require("./routes/auth.route");
@@ -52,6 +54,7 @@ connectRedis();
 connectRabbitMQ().then(() => {
   startEmailConsumer();
   startOrderInvoiceConsumer();
+  startShipperDispatcherConsumer();
 });
 
 app.get("/api/v1/health", (req, res) => {
@@ -295,7 +298,6 @@ app.get("/logs/stream", (req, res) => {
   });
 });
 
-const os = require("os");
 
 const networkInterfaces = os.networkInterfaces();
 const address = Object.values(networkInterfaces)
